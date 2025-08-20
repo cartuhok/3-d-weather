@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.behance.net)",
+      "WebFetch(domain:solarsystem.nasa.gov)",
+      "Bash(mkdir:*)",
+      "WebFetch(domain:polyhaven.com)",
+      "WebFetch(domain:react-postprocessing.docs.pmnd.rs)",
+      "Bash(curl:*)"
+    ],
+    "deny": []
+  }
+}
