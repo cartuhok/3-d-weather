@@ -63,7 +63,10 @@ function App() {
     <div className="w-screen h-screen relative overflow-hidden">
       {/* 3D Scene fills entire viewport - base layer */}
       <div className="absolute inset-0 z-0">
-        <Scene3D weatherData={weatherData} isLoading={isLoading} />
+        <Scene3D 
+          weatherData={weatherData} 
+          isLoading={isLoading} 
+        />
       </div>
       
       {/* All UI elements overlay on top of the canvas */}

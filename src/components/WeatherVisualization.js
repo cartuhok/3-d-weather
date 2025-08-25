@@ -27,15 +27,33 @@ const WeatherVisualization = ({ weatherData, isLoading }) => {
     return null;
   }
 
+  // Check if it's partly cloudy based on the condition text
+  const isPartlyCloudy = () => {
+    if (!currentCondition) return false;
+    const condition = currentCondition.toLowerCase();
+    return condition.includes('partly') || condition.includes('few clouds') || 
+           condition.includes('scattered') || condition.includes('broken clouds');
+  };
+
   const renderWeatherEffect = () => {
+    const partlyCloudy = isPartlyCloudy();
+    
     switch (weatherType) {
       case 'sunny':
+        if (partlyCloudy) {
+          return (
+            <>
+              {isNight ? <Moon /> : <Sun />}
+              <Clouds intensity={0.5} speed={0.1} isPartlyCloudy={true} />
+            </>
+          );
+        }
         return isNight ? <Moon /> : <Sun />;
       case 'cloudy':
         return (
           <>
             {isNight ? <Moon /> : <Sun />}
-            <Clouds intensity={0.7} speed={0.1} />
+            <Clouds intensity={0.7} speed={0.1} isPartlyCloudy={partlyCloudy} />
           </>
         );
       case 'rainy':
@@ -57,6 +75,14 @@ const WeatherVisualization = ({ weatherData, isLoading }) => {
       case 'foggy':
         return <Clouds intensity={0.9} speed={0.05} />;
       default:
+        if (partlyCloudy) {
+          return (
+            <>
+              {isNight ? <Moon /> : <Sun />}
+              <Clouds intensity={0.5} speed={0.1} isPartlyCloudy={true} />
+            </>
+          );
+        }
         return isNight ? <Moon /> : <Sun />;
     }
   };

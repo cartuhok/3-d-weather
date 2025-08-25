@@ -2,7 +2,7 @@ import React from 'react';
 import { Clouds as DreiClouds, Cloud } from '@react-three/drei';
 import * as THREE from 'three';
 
-const Clouds = ({ intensity = 0.7, speed = 0.1, weatherCondition = 'partly-cloudy' }) => {
+const Clouds = ({ intensity = 0.7, speed = 0.1, weatherCondition = 'partly-cloudy', isPartlyCloudy = false }) => {
   // Determine cloud colors based on weather condition
   const getCloudColors = () => {
     switch (weatherCondition) {
@@ -104,6 +104,42 @@ const Clouds = ({ intensity = 0.7, speed = 0.1, weatherCondition = 'partly-cloud
           opacity={colors.intensity * 0.7}
           position={[-2, 2.5, -5]}
         />
+        
+        {/* Foreground clouds that appear in front of sun/moon for partly cloudy conditions */}
+        {isPartlyCloudy && (
+          <>
+            <Cloud
+              segments={40}
+              bounds={[6, 2, 2]}
+              volume={5}
+              color={colors.secondary}
+              fade={90}
+              speed={speed * 0.8}
+              opacity={colors.intensity * 0.4}
+              position={[-1, 3.5, 2]} // Positive Z to be in front of sun/moon
+            />
+            <Cloud
+              segments={35}
+              bounds={[5, 1.5, 1.5]}
+              volume={4}
+              color={colors.light}
+              fade={95}
+              speed={speed * 1.2}
+              opacity={colors.intensity * 0.3}
+              position={[1.5, 2.8, 1.5]} // Positive Z to be in front of sun/moon
+            />
+            <Cloud
+              segments={30}
+              bounds={[4, 1.2, 1.2]}
+              volume={3}
+              color={colors.tertiary}
+              fade={85}
+              speed={speed * 0.9}
+              opacity={colors.intensity * 0.35}
+              position={[0.5, 4.2, 1.8]} // Positive Z to be in front of sun/moon
+            />
+          </>
+        )}
       </DreiClouds>
     </group>
   );

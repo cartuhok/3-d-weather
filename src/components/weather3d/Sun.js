@@ -21,9 +21,25 @@ const Sun = () => {
     emissiveIntensity: 0.3,
   });
 
+  // Lens flare trigger sphere - completely invisible
+  const flareMaterial = new THREE.MeshPhysicalMaterial({
+    transparent: true,
+    opacity: 0, // Completely invisible
+    emissive: '#FFD700',
+    emissiveIntensity: 2.0,
+    transmission: 1,
+  });
+
   return (
     <group position={[0, 3, 0]}>
-      <Sphere ref={sunRef} args={[1.8, 32, 32]} material={sunMaterial} />
+      <Sphere ref={sunRef} args={[1.6, 32, 32]} material={sunMaterial} />
+      
+      {/* Lens flare trigger sphere - marks as no-occlusion for lens flare system */}
+      <Sphere 
+        args={[1.6, 32, 32]} 
+        material={flareMaterial}
+        userData={{ lensflare: 'no-occlusion' }}
+      />
       
       {/* Sun lighting */}
       <pointLight position={[0, 0, 0]} intensity={2.5} color="#FFD700" distance={25} />

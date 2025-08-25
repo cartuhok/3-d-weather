@@ -7,19 +7,52 @@ import Rain from './Rain';
 const Storm = () => {
   const lightningRef = useRef();
   const cloudsRef = useRef();
+  const lightningBoltRef = useRef();
+  const lightningActive = useRef(false);
 
   useFrame((state) => {
-    if (Math.random() < 0.01) {
+    // Lightning strikes with random timing (back to normal frequency)
+    if (Math.random() < 0.008 && !lightningActive.current) {
+      lightningActive.current = true;
+      
+      if (lightningBoltRef.current) {
+        lightningBoltRef.current.visible = true;
+      }
+      
       if (lightningRef.current) {
-        lightningRef.current.intensity = 3;
+        // Bright initial flash
+        lightningRef.current.intensity = 15;
+        
+        // Quick flicker effect
         setTimeout(() => {
           if (lightningRef.current) lightningRef.current.intensity = 0;
+        }, 50);
+        
+        setTimeout(() => {
+          if (lightningRef.current) lightningRef.current.intensity = 20;
         }, 100);
+        
+        setTimeout(() => {
+          if (lightningRef.current) lightningRef.current.intensity = 0;
+        }, 150);
+        
+        // Final brief flash
+        setTimeout(() => {
+          if (lightningRef.current) lightningRef.current.intensity = 10;
+        }, 200);
+        
+        setTimeout(() => {
+          if (lightningRef.current) lightningRef.current.intensity = 0;
+          if (lightningBoltRef.current) {
+            lightningBoltRef.current.visible = false;
+          }
+          lightningActive.current = false;
+        }, 250);
       }
     }
     
     if (cloudsRef.current) {
-      cloudsRef.current.rotation.y += 0.005;
+      cloudsRef.current.rotation.y += 0.002; // Slower cloud movement
     }
   });
 
@@ -66,9 +99,35 @@ const Storm = () => {
         ref={lightningRef}
         position={[0, 8, 0]}
         intensity={0}
-        color="#E6E6FA"
-        distance={20}
+        color="#FFFFFF"
+        distance={30}
+        decay={1}
+        castShadow
       />
+      
+      {/* Visual lightning bolt */}
+      <line ref={lightningBoltRef} visible={false}>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            array={new Float32Array([
+              0, 8, 0,    // Start point (cloud level)
+              -0.5, 6, 0,  // First bend
+              0.3, 4, 0,   // Second bend
+              -0.2, 2, 0,  // Third bend
+              0, 0, 0      // Ground level
+            ])}
+            count={5}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <lineBasicMaterial 
+          color="#FFFFFF" 
+          linewidth={3}
+          transparent
+          opacity={0.9}
+        />
+      </line>
     </group>
   );
 };

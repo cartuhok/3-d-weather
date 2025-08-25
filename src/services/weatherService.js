@@ -10,9 +10,8 @@ export const weatherService = {
         `${BASE_URL}/forecast.json?key=${API_KEY}&q=${location}&days=3&aqi=no&alerts=no`
       );
       
-      // Create a clean copy of the data to avoid circular references
-      const cleanData = JSON.parse(JSON.stringify(response.data));
-      return cleanData;
+      // Return just the data we need to avoid circular references
+      return response.data;
     } catch (error) {
       console.error('Error fetching weather data:', error);
       throw error;
@@ -50,6 +49,9 @@ export const getWeatherConditionType = (condition) => {
   if (conditionLower.includes('sunny') || conditionLower.includes('clear')) {
     return 'sunny';
   }
+  if (conditionLower.includes('thunder') || conditionLower.includes('storm')) {
+    return 'stormy';
+  }
   if (conditionLower.includes('cloud') || conditionLower.includes('overcast')) {
     return 'cloudy';
   }
@@ -58,9 +60,6 @@ export const getWeatherConditionType = (condition) => {
   }
   if (conditionLower.includes('snow') || conditionLower.includes('blizzard')) {
     return 'snowy';
-  }
-  if (conditionLower.includes('thunder') || conditionLower.includes('storm')) {
-    return 'stormy';
   }
   if (conditionLower.includes('fog') || conditionLower.includes('mist')) {
     return 'foggy';
