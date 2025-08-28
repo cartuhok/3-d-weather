@@ -7,7 +7,7 @@ export const weatherService = {
   getCurrentWeather: async (location) => {
     try {
       const response = await axios.get(
-        `${BASE_URL}/forecast.json?key=${API_KEY}&q=${location}&days=3&aqi=no&alerts=no`
+        `${BASE_URL}/forecast.json?key=${API_KEY}&q=${location}&days=3&aqi=no&alerts=no&tz=${Intl.DateTimeFormat().resolvedOptions().timeZone}`
       );
       
       // Return just the data we need to avoid circular references

@@ -27,8 +27,8 @@ const Moon = () => {
 
 
   return (
-    <group position={[0, 3, 0]}>
-      <Sphere ref={moonRef} args={[1.6, 32, 32]} material={moonMaterial} />
+    <group position={[0, 4.5, 0]}>
+      <Sphere ref={moonRef} args={[2, 32, 32]} material={moonMaterial} />
       
       
       {/* Soft moonlight */}

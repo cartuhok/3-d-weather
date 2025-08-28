@@ -1,9 +1,10 @@
 import React, { Suspense, useMemo, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Sky, Stars } from '@react-three/drei';
+import { OrbitControls, Sky, Stars, Text } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import { useControls } from 'leva';
 import UltimateLensFlare from './lensflare/LensFlare';
+import ForecastPortals from './ForecastPortals';
+import { getWeatherConditionType } from '../services/weatherService';
 import * as THREE from 'three';
 import WeatherVisualization from './WeatherVisualization';
 
@@ -18,140 +19,183 @@ const SceneBackground = ({ backgroundColor }) => {
   return null;
 };
 
-// Lens flare visibility logic - show whenever sun model is visible (daytime)
+// Lens flare visibility logic - follows exact same logic as Sun model visibility
 const useLensFlareVisibility = (weatherData, isNight) => {
   return React.useMemo(() => {
-    // Show lens flare during any daytime condition (when sun model is visible)
-    return !isNight && weatherData;
+    if (isNight || !weatherData) return false;
+    
+    const currentCondition = weatherData?.current?.condition?.text;
+    const weatherType = currentCondition ? getWeatherConditionType(currentCondition) : null;
+    
+    // Check if it's partly cloudy based on the condition text
+    const isPartlyCloudy = () => {
+      if (!currentCondition) return false;
+      const condition = currentCondition.toLowerCase();
+      return condition.includes('partly') || condition.includes('few clouds') || 
+             condition.includes('scattered') || condition.includes('broken clouds');
+    };
+    
+    // Replicate the EXACT same logic from WeatherVisualization renderWeatherEffect()
+    switch (weatherType) {
+      case 'sunny':
+        return true; // Sun always appears for sunny (with or without clouds)
+      case 'cloudy':
+        return isPartlyCloudy(); // Sun only appears if partly cloudy
+      case 'rainy':
+        return false; // No sun - only clouds and rain
+      case 'snowy':
+        return false; // No sun - only clouds and snow  
+      case 'stormy':
+        return false; // No sun - storm effect only
+      case 'foggy':
+        return false; // No sun - only clouds/fog
+      default:
+        return isPartlyCloudy(); // Default case shows sun only if partly cloudy
+    }
   }, [isNight, weatherData]);
 };
 
 // Post-processing effects with Ultimate Lens Flare - only render when needed
-const PostProcessingEffects = ({ showLensFlare }) => {
-  const lensFlareControls = useControls('Lens Flare', {
-    enabled: { value: true, render: () => showLensFlare },
-    positionX: {
-      value: -26,
-      min: -100,
-      max: 100,
-      step: 1,
-    },
-    positionY: {
-      value: 6,
-      min: -50,
-      max: 50,
-      step: 1,
-    },
-    positionZ: {
-      value: -60,
-      min: -100,
-      max: 100,
-      step: 1,
-    },
-    opacity: {
-      value: 1.00,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
-    glareSize: {
-      value: 0.35,
-      min: 0,
-      max: 2,
-      step: 0.01,
-    },
-    starPoints: {
-      value: 6,
-      min: 3,
-      max: 12,
-      step: 1,
-    },
+const PostProcessingEffects = ({ showLensFlare, isPortalMode = false }) => {
+  // Define main scene lens flare values (now using the portal screenshot values)
+  const mainSceneDefaults = {
+    positionX: 180,
+    positionY: -115,
+    positionZ: -39,
+    opacity: 1.00,
+    glareSize: 0.35,
+    starPoints: 6,
+    animated: true,
+    followMouse: false,
+    anamorphic: true,
+    colorGain: '#38150b',
+    flareSpeed: 0.45,
+    flareShape: 0.33,
+    flareSize: 0.03,
+    secondaryGhosts: true,
+    ghostScale: 0.70,
+    aditionalStreaks: true,
+    starBurst: true,
+    haloScale: 0.36,
+  };
+
+  // Define portal mode lens flare values (now using the original main screen values)
+  const portalModeDefaults = {
+    positionX: -26,
+    positionY: 6,
+    positionZ: -60,
+    opacity: 1.00,
+    glareSize: 0.35,
+    starPoints: 6,
     animated: true,
     followMouse: false,
     anamorphic: false,
     colorGain: '#38150b',
-    flareSpeed: {
-      value: 0.40,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
-    flareShape: {
-      value: 0.10,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
-    flareSize: {
-      value: 0.01,
-      min: 0,
-      max: 0.1,
-      step: 0.001,
-    },
+    flareSpeed: 0.40,
+    flareShape: 0.10,
+    flareSize: 0.01,
     secondaryGhosts: true,
-    ghostScale: {
-      value: 0.10,
-      min: 0,
-      max: 2,
-      step: 0.01,
-    },
+    ghostScale: 0.10,
     aditionalStreaks: true,
     starBurst: true,
-    haloScale: {
-      value: 0.50,
-      min: 0,
-      max: 2,
-      step: 0.01,
-    },
-  });
+    haloScale: 0.50,
+  };
 
-  const bloomControls = useControls('Bloom', {
-    bloomIntensity: {
-      value: 0.3,
-      min: 0,
-      max: 2,
-      step: 0.01,
-    },
-    bloomThreshold: {
-      value: 0.9,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
-  });
+  // Use appropriate defaults based on portal mode
+  const currentDefaults = isPortalMode ? portalModeDefaults : mainSceneDefaults;
+
+  // Use values directly without Leva controls
+  const lensFlareSettings = currentDefaults;
+  
+  // Define bloom values for different modes
+  const mainSceneBloom = {
+    bloomIntensity: 0.3,
+    bloomThreshold: 0.9,
+  };
+
+  const portalModeBloom = {
+    bloomIntensity: 0.97,
+    bloomThreshold: 0.85,
+  };
+
+  const bloomSettings = isPortalMode ? portalModeBloom : mainSceneBloom;
   
   if (!showLensFlare) return null;
   
   return (
     <EffectComposer>
       <UltimateLensFlare
-        position={[lensFlareControls.positionX, lensFlareControls.positionY, lensFlareControls.positionZ]}
-        opacity={lensFlareControls.opacity}
-        glareSize={lensFlareControls.glareSize}
-        starPoints={lensFlareControls.starPoints}
-        animated={lensFlareControls.animated}
-        followMouse={lensFlareControls.followMouse}
-        anamorphic={lensFlareControls.anamorphic}
-        colorGain={new THREE.Color(lensFlareControls.colorGain)}
-        flareSpeed={lensFlareControls.flareSpeed}
-        flareShape={lensFlareControls.flareShape}
-        flareSize={lensFlareControls.flareSize}
-        secondaryGhosts={lensFlareControls.secondaryGhosts}
-        ghostScale={lensFlareControls.ghostScale}
-        aditionalStreaks={lensFlareControls.aditionalStreaks}
-        starBurst={lensFlareControls.starBurst}
-        haloScale={lensFlareControls.haloScale}
+        position={[lensFlareSettings.positionX, lensFlareSettings.positionY, lensFlareSettings.positionZ]}
+        opacity={lensFlareSettings.opacity}
+        glareSize={lensFlareSettings.glareSize}
+        starPoints={lensFlareSettings.starPoints}
+        animated={lensFlareSettings.animated}
+        followMouse={lensFlareSettings.followMouse}
+        anamorphic={lensFlareSettings.anamorphic}
+        colorGain={new THREE.Color(lensFlareSettings.colorGain)}
+        flareSpeed={lensFlareSettings.flareSpeed}
+        flareShape={lensFlareSettings.flareShape}
+        flareSize={lensFlareSettings.flareSize}
+        secondaryGhosts={lensFlareSettings.secondaryGhosts}
+        ghostScale={lensFlareSettings.ghostScale}
+        aditionalStreaks={lensFlareSettings.aditionalStreaks}
+        starBurst={lensFlareSettings.starBurst}
+        haloScale={lensFlareSettings.haloScale}
         dirtTextureFile="/lensDirtTexture.jpg"
       />
       <Bloom 
-        intensity={bloomControls.bloomIntensity} 
-        threshold={bloomControls.bloomThreshold} 
+        intensity={bloomSettings.bloomIntensity} 
+        threshold={bloomSettings.bloomThreshold} 
       />
     </EffectComposer>
   );
 };
 
-const Scene3D = ({ weatherData, isLoading }) => {
+const Scene3D = ({ weatherData, isLoading, onPortalModeChange, onSetExitPortalFunction, onPortalWeatherDataChange }) => {
+  const [portalMode, setPortalMode] = React.useState(false);
+  const [portalWeatherData, setPortalWeatherData] = React.useState(null);
+  
+
+  const exitPortal = () => {
+    setPortalMode(false);
+    setPortalWeatherData(null);
+    onPortalModeChange?.(false);
+    onPortalWeatherDataChange?.(null);
+  };
+
+  const handlePortalStateChange = (isPortalActive, dayData) => {
+    setPortalMode(isPortalActive);
+    onPortalModeChange?.(isPortalActive);
+    if (isPortalActive && dayData) {
+      // Create weather data for the portal day
+      const portalData = {
+        current: {
+          temp_f: dayData.day.maxtemp_f,
+          condition: dayData.day.condition,
+          is_day: 1,
+          humidity: dayData.day.avghumidity,
+          wind_mph: dayData.day.maxwind_mph,
+          feelslike_f: dayData.day.maxtemp_f, // Approximate feels like temp
+          vis_miles: 10, // Default visibility
+        },
+        location: {
+          name: weatherData?.location?.name || 'Unknown',
+          region: weatherData?.location?.region || '',
+          localtime: dayData.date + 'T12:00'
+        }
+      };
+      setPortalWeatherData(portalData);
+      onPortalWeatherDataChange?.(portalData);
+    } else {
+      setPortalWeatherData(null);
+      onPortalWeatherDataChange?.(null);
+    }
+  };
+
+  // Provide exit function to parent
+  React.useEffect(() => {
+    onSetExitPortalFunction?.(() => exitPortal);
+  }, [onSetExitPortalFunction]);
   
   const getTimeOfDay = () => {
     if (!weatherData?.location?.localtime) return 'day';
@@ -219,6 +263,7 @@ const Scene3D = ({ weatherData, isLoading }) => {
   const isNight = isNightTime();
   const timeOfDay = getTimeOfDay();
   const showLensFlare = useLensFlareVisibility(weatherData, isNight);
+  const showPortalLensFlare = useLensFlareVisibility(portalWeatherData, false);
   
   // Sky turbidity based on weather conditions
   const getTurbidity = () => {
@@ -248,18 +293,43 @@ const Scene3D = ({ weatherData, isLoading }) => {
     return '#0D7FDB'; // vivid clear sky blue
   };
 
+  // Component to handle mobile responsive text inside Canvas
+  const ResponsiveText = ({ isNight, isLoading }) => {
+    const { viewport } = useThree();
+    const isMobile = viewport.width < 6;
+    const textScale = isMobile ? 0.7 : 1;
+    const textPosition = isMobile ? [0, -1.8, 0] : [0, -2.1, 0];
+    
+    if (isLoading) return null;
+    
+    return (
+      <Text
+        position={textPosition}
+        fontSize={0.2 * textScale}
+        color={isNight ? "#FFFFFF" : "#333333"}
+        anchorX="center"
+        anchorY="middle"
+        letterSpacing={0.7}
+      >
+        THREE DAY FORECAST
+      </Text>
+    );
+  };
+
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
       <Canvas
-        camera={{ position: [0, 1, 8], fov: 60 }}
-        gl={{ alpha: false }}
+        camera={{ position: [0, 1, 10], fov: 60 }}
+        gl={{ alpha: false, antialias: true }}
+        style={{ width: '100%', height: '100%' }}
       >
         <Suspense fallback={null}>
-          {/* Set scene background dynamically */}
-          <SceneBackground backgroundColor={getBackgroundColor()} />
+          {/* Scene background only for portal mode - Sky handles main scene */}
+          {portalMode && <SceneBackground key={`bg-${timeOfDay}-${portalMode}`} backgroundColor={getBackgroundColor()} />}
           
           {/* Sky with dynamic sun position based on time of day */}
           <Sky
+            key={`main-sky-${timeOfDay}-${portalMode}`}
             sunPosition={(() => {
               switch(timeOfDay) {
                 case 'dawn':
@@ -295,9 +365,6 @@ const Scene3D = ({ weatherData, isLoading }) => {
               }
             })()}
           />
-          
-          {/* Stars only visible at night */}
-          {isNight && <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />}
           
           <ambientLight intensity={(() => {
             switch(timeOfDay) {
@@ -338,19 +405,63 @@ const Scene3D = ({ weatherData, isLoading }) => {
           />
           <pointLight position={[-10, -10, -10]} intensity={0.3} />
           
-          <WeatherVisualization 
-            weatherData={weatherData} 
-            isLoading={isLoading}
-          />
-          
-          {/* Post-processing effects including Ultimate Lens Flare */}
-          <PostProcessingEffects showLensFlare={showLensFlare} />
+          {!portalMode ? (
+            <>
+              {/* Main Scene */}
+              {/* Stars only visible at night in main scene */}
+              {isNight && <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />}
+              
+              <WeatherVisualization 
+                weatherData={weatherData} 
+                isLoading={isLoading}
+              />
+              
+              {/* Three Day Forecast 3D Label - responsive for mobile */}
+              <ResponsiveText isNight={isNight} isLoading={isLoading} />
+
+              {/* 3D Forecast Portals */}
+              <ForecastPortals 
+                weatherData={weatherData} 
+                isLoading={isLoading}
+                onPortalStateChange={handlePortalStateChange}
+              />
+              
+              {/* Post-processing effects including Ultimate Lens Flare */}
+              <PostProcessingEffects showLensFlare={showLensFlare} isPortalMode={false} />
+            </>
+          ) : (
+            <>
+              {/* Fullscreen Portal Content with Day Sky */}
+              <SceneBackground backgroundColor={'#0D7FDB'} />
+              <Sky
+                sunPosition={[100, 20, 100]}
+                inclination={0.9}
+                turbidity={2}
+              />
+              <ambientLight intensity={0.4} />
+              <directionalLight 
+                position={[10, 10, 5]} 
+                intensity={1} 
+                color="#FFFFFF"
+              />
+              <group position={[0, -1, 0]}>
+                <WeatherVisualization 
+                  weatherData={portalWeatherData} 
+                  isLoading={false}
+                  portalMode={false}
+                />
+              </group>
+              
+              {/* Add lens flare effect for portal mode when sun should be visible */}
+              <PostProcessingEffects showLensFlare={showPortalLensFlare} isPortalMode={true} />
+            </>
+          )}
           
           <OrbitControls
             enablePan={true}
             enableZoom={true}
             enableRotate={true}
-            target={[0, 2, 0]}
+            target={portalMode ? [0, 2, 0] : [0, 2, 0]}
             maxPolarAngle={Math.PI / 1.8}
             minPolarAngle={Math.PI / 4}
             maxAzimuthAngle={Math.PI / 2}

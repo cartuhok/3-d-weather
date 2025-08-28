@@ -17,8 +17,6 @@ const Sun = () => {
 
   const sunMaterial = new THREE.MeshBasicMaterial({
     map: sunTexture,
-    emissive: '#FFD700',
-    emissiveIntensity: 0.3,
   });
 
   // Lens flare trigger sphere - completely invisible
@@ -31,8 +29,8 @@ const Sun = () => {
   });
 
   return (
-    <group position={[0, 3, 0]}>
-      <Sphere ref={sunRef} args={[1.6, 32, 32]} material={sunMaterial} />
+    <group position={[0, 4.5, 0]}>
+      <Sphere ref={sunRef} args={[2, 32, 32]} material={sunMaterial} />
       
       {/* Lens flare trigger sphere - marks as no-occlusion for lens flare system */}
       <Sphere 

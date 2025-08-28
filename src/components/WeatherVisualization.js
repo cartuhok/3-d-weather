@@ -8,7 +8,7 @@ import Snow from './weather3d/Snow';
 import Storm from './weather3d/Storm';
 import { Text } from '@react-three/drei';
 
-const WeatherVisualization = ({ weatherData, isLoading }) => {
+const WeatherVisualization = ({ weatherData, isLoading, portalMode = false }) => {
 
   // Check if it's nighttime based on local time
   const isNightTime = () => {
@@ -50,11 +50,16 @@ const WeatherVisualization = ({ weatherData, isLoading }) => {
         }
         return isNight ? <Moon /> : <Sun />;
       case 'cloudy':
+        if (partlyCloudy) {
+          return (
+            <>
+              {isNight ? <Moon /> : <Sun />}
+              <Clouds intensity={0.6} speed={0.1} isPartlyCloudy={true} />
+            </>
+          );
+        }
         return (
-          <>
-            {isNight ? <Moon /> : <Sun />}
-            <Clouds intensity={0.7} speed={0.1} isPartlyCloudy={partlyCloudy} />
-          </>
+          <Clouds intensity={0.8} speed={0.1} isPartlyCloudy={false} />
         );
       case 'rainy':
         return (
@@ -88,18 +93,23 @@ const WeatherVisualization = ({ weatherData, isLoading }) => {
   };
 
   return (
-    <group>
+    <group 
+      scale={portalMode ? 0.4 : 1} 
+      position={portalMode ? [0, -1.8, 0] : [0, 0, 0]}
+    >
       {renderWeatherEffect()}
       
-      <Text
-        position={[0, 0.5, 0]}
-        fontSize={0.5}
-        color={isNight ? "#FFFFFF" : "#333333"}
-        anchorX="center"
-        anchorY="middle"
-      >
-        {currentCondition}
-      </Text>
+      {!portalMode && (
+        <Text
+          position={[0, 2, 0]}
+          fontSize={0.5}
+          color={isNight ? "#FFFFFF" : "#333333"}
+          anchorX="center"
+          anchorY="middle"
+        >
+          {currentCondition}
+        </Text>
+      )}
     </group>
   );
 };

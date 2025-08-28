@@ -11,6 +11,10 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentLocationName, setCurrentLocationName] = useState('');
+  const [isPortalMode, setIsPortalMode] = useState(false);
+  const [exitPortalFunction, setExitPortalFunction] = useState(null);
+  const [portalWeatherData, setPortalWeatherData] = useState(null);
+  const [errorSearchQuery, setErrorSearchQuery] = useState('');
 
   useEffect(() => {
     loadCurrentLocationWeather();
@@ -56,8 +60,23 @@ function App() {
     return currentHour >= 19 || currentHour <= 6;
   };
 
+  const handlePortalWeatherDataChange = (data) => {
+    setPortalWeatherData(data);
+  };
+
+  const handleErrorSearch = async (e) => {
+    e.preventDefault();
+    if (errorSearchQuery.trim()) {
+      await handleLocationChange(errorSearchQuery.trim());
+      setErrorSearchQuery('');
+    }
+  };
+
+  // Use portal weather data when in portal mode, otherwise use main weather data
+  const displayWeatherData = isPortalMode && portalWeatherData ? portalWeatherData : weatherData;
+
   const isNight = isNightTime();
-  const textColor = isNight ? 'text-white' : 'text-black';
+  const textColor = (isPortalMode || !isNight) ? 'text-black' : 'text-white';
 
   return (
     <div className="w-screen h-screen relative overflow-hidden">
@@ -65,73 +84,102 @@ function App() {
       <div className="absolute inset-0 z-0">
         <Scene3D 
           weatherData={weatherData} 
-          isLoading={isLoading} 
+          isLoading={isLoading}
+          onPortalModeChange={setIsPortalMode}
+          onSetExitPortalFunction={setExitPortalFunction}
+          onPortalWeatherDataChange={handlePortalWeatherDataChange}
         />
       </div>
       
       {/* All UI elements overlay on top of the canvas */}
       {weatherData && !isLoading && (
         <>
-          {/* Location Selector */}
-          <LocationSelector 
-            onLocationChange={handleLocationChange}
-            currentLocation={currentLocationName}
-            isLoading={isLoading}
-            isNight={isNight}
-          />
-
-          {/* Location Info - overlay */}
-          <div className={`absolute top-20 left-6 z-20 ${textColor}`}>
-            <div className="text-sm opacity-60">
-              {weatherData.location.name.toUpperCase()}
+          {/* Header - changes layout based on portal mode */}
+          {isPortalMode ? (
+            <>
+              {/* Portal Mode Header */}
+              <div className={`absolute top-6 left-6 z-20 ${textColor}`}>
+                <button 
+                  onClick={() => exitPortalFunction?.()}
+                  className={`flex items-center space-x-2 px-4 py-2 ${textColor} opacity-80 hover:opacity-100 transition-opacity`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span className="text-sm font-light">Back</span>
+                </button>
+              </div>
+              <div className={`absolute top-6 right-6 z-20 ${textColor} text-right`}>
+                <div className="text-lg font-light tracking-wide opacity-95">
+                  {displayWeatherData.location.name}
+                </div>
+                <div className="text-sm opacity-60 tracking-wide">
+                  {displayWeatherData.location.region}
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Normal Mode Header */
+            <div className={`absolute top-6 left-6 right-6 z-20 flex items-start justify-between ${textColor}`}>
+              <div>
+                <div className="text-lg font-light tracking-wide opacity-95">
+                  {displayWeatherData.location.name}
+                </div>
+                <div className="text-sm opacity-60 tracking-wide">
+                  {displayWeatherData.location.region}
+                </div>
+              </div>
+              <LocationSelector 
+                onLocationChange={handleLocationChange}
+                currentLocation={currentLocationName}
+                isLoading={isLoading}
+                isNight={isNight}
+              />
             </div>
-            <div className="text-xs opacity-50 mt-1">
-              {weatherData.location.region}
+          )}
+
+
+          {/* Main Temperature Card - Bottom Left */}
+          <div className={`absolute bottom-6 left-6 z-20 ${textColor}`}>
+            <div className="flex items-end space-x-4">
+              <div className="flex items-baseline">
+                <span className="text-6xl font-thin leading-none">
+                  {Math.round(displayWeatherData.current.temp_f)}
+                </span>
+                <span className="text-2xl font-thin opacity-75">°</span>
+              </div>
+              <div className="pb-2">
+                <div className="text-sm font-light opacity-80 capitalize mb-1">
+                  {displayWeatherData.current.condition.text}
+                </div>
+                <div className="text-xs opacity-60 space-y-0.5">
+                  <div>H: {Math.round(displayWeatherData.current.temp_f + 5)}° L: {Math.round(displayWeatherData.current.temp_f - 10)}°</div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Temperature Display - overlay */}
-          <div className={`absolute bottom-80 left-6 z-20 ${textColor}`}>
-            <div className="flex items-baseline mb-2">
-              <span className="text-8xl font-extralight leading-none tracking-tight">
-                {Math.round(weatherData.current.temp_f)}
-              </span>
-              <span className="text-3xl font-extralight ml-1 opacity-80">°</span>
-            </div>
-            <div className="text-lg font-light opacity-70 capitalize">
-              {weatherData.current.condition.text}
-            </div>
-          </div>
-
-          {/* High/Low temps - overlay */}
-          <div className={`absolute bottom-80 right-6 text-right z-20 ${textColor}`}>
-            <div className="text-sm opacity-60 space-y-1">
-              <div>H: {Math.round(weatherData.current.temp_f + 5)}°</div>
-              <div>L: {Math.round(weatherData.current.temp_f - 10)}°</div>
-            </div>
-          </div>
-
-          {/* Forecast at bottom - overlay */}
-          <Forecast weatherData={weatherData} isLoading={isLoading} isNight={isNight} />
+          {/* Forecast now handled by 3D portals in Scene3D */}
+          {/* <Forecast weatherData={weatherData} isLoading={isLoading} isNight={isNight} /> */}
           
-          {/* Bottom Weather Stats - overlay */}
-          <div className={`absolute bottom-6 left-6 right-6 z-20 ${textColor}`}>
-            <div className="grid grid-cols-4 gap-4 text-center text-base">
-              <div>
-                <div className="opacity-60 mb-2 text-sm">HUMIDITY</div>
-                <div className={textColor}>{weatherData.current.humidity}%</div>
+          {/* Compact Stats Bar - Bottom Right */}
+          <div className={`absolute bottom-6 right-6 z-20 ${textColor}`}>
+            <div className="flex flex-col space-y-3 text-right text-sm">
+              <div className="flex items-center justify-end space-x-2">
+                <span className="opacity-60">HUMIDITY</span>
+                <span className="font-light">{displayWeatherData.current.humidity}%</span>
               </div>
-              <div>
-                <div className="opacity-60 mb-2 text-sm">WIND</div>
-                <div className={textColor}>{Math.round(weatherData.current.wind_mph)} mph</div>
+              <div className="flex items-center justify-end space-x-2">
+                <span className="opacity-60">WIND</span>
+                <span className="font-light">{Math.round(displayWeatherData.current.wind_mph)} mph</span>
               </div>
-              <div>
-                <div className="opacity-60 mb-2 text-sm">FEELS LIKE</div>
-                <div className={textColor}>{Math.round(weatherData.current.feelslike_f)}°</div>
+              <div className="flex items-center justify-end space-x-2">
+                <span className="opacity-60">FEELS</span>
+                <span className="font-light">{Math.round(displayWeatherData.current.feelslike_f)}°</span>
               </div>
-              <div>
-                <div className="opacity-60 mb-2 text-sm">VISIBILITY</div>
-                <div className={textColor}>{Math.round(weatherData.current.vis_miles)} mi</div>
+              <div className="flex items-center justify-end space-x-2">
+                <span className="opacity-60">VISIBILITY</span>
+                <span className="font-light">{Math.round(displayWeatherData.current.vis_miles)} mi</span>
               </div>
             </div>
           </div>
@@ -149,12 +197,40 @@ function App() {
         <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-lg z-50">
           <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 max-w-sm mx-4 text-center border border-white/20">
             <p className="text-white text-lg font-light mb-6 leading-relaxed">{error}</p>
-            <button 
-              onClick={loadCurrentLocationWeather} 
-              className="bg-white/20 hover:bg-white/30 px-6 py-3 rounded-2xl text-white font-light transition-all duration-300 border border-white/30 hover:scale-105"
-            >
-              Try Again
-            </button>
+            
+            {/* Search form for manual city entry */}
+            <form onSubmit={handleErrorSearch} className="mb-6">
+              <div className="flex items-center space-x-2 bg-white/10 rounded-2xl p-3 border border-white/20">
+                <input
+                  type="text"
+                  value={errorSearchQuery}
+                  onChange={(e) => setErrorSearchQuery(e.target.value)}
+                  placeholder="Enter city name..."
+                  className="flex-1 bg-transparent text-white placeholder-white/60 focus:outline-none text-sm font-light"
+                  disabled={isLoading}
+                />
+                <button 
+                  type="submit" 
+                  className="text-white/80 hover:text-white transition-colors disabled:opacity-40"
+                  disabled={!errorSearchQuery.trim() || isLoading}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
+              </div>
+            </form>
+
+            {/* Buttons */}
+            <div className="flex space-x-3">
+              <button 
+                onClick={loadCurrentLocationWeather} 
+                className="flex-1 bg-white/20 hover:bg-white/30 px-4 py-3 rounded-2xl text-white font-light transition-all duration-300 border border-white/30 hover:scale-105 text-sm"
+                disabled={isLoading}
+              >
+                Try Location Again
+              </button>
+            </div>
           </div>
         </div>
       )}
